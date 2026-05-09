@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <title>ทดสอบสร้างป้าย — RTC M&S</title>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <style>
+    body { font-family: sans-serif; background: #f5f5f5; padding: 20px; }
+    h2 { color: #c0392b; }
+    .controls { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; margin-bottom: 24px; }
+    .pct-btn { padding: 12px 28px; font-size: 18px; font-weight: 800; border-radius: 10px; border: 2px solid #ccc; cursor: pointer; background: white; }
+    .pct-btn.selected { background: #c0392b; color: white; border-color: #c0392b; }
+    .btn-pdf { padding: 12px 28px; font-size: 16px; font-weight: 700; border-radius: 10px; border: none; background: #2c3e50; color: white; cursor: pointer; }
+    .btn-pdf:hover { background: #1a252f; }
+    .grid { display: flex; flex-wrap: wrap; gap: 12px; }
+    .tag { width: 180px; background: white; border: 1px solid #ddd; border-radius: 10px; padding: 12px; text-align: center; box-shadow: 0 2px 6px rgba(0,0,0,0.08); }
+    .tag canvas { display: block; margin: 0 auto 8px; }
+    .tag .sale { font-size: 22px; font-weight: 900; color: #c0392b; }
+    .tag .full { font-size: 13px; color: #999; text-decoration: line-through; }
+    .tag .barcode { font-size: 10px; color: #bbb; font-family: monospace; margin-top: 4px; word-break: break-all; }
+    .tag .pct-tag { font-size: 11px; background: #c0392b; color: white; padding: 2px 8px; border-radius: 10px; display: inline-block; margin-bottom: 6px; }
+    table { border-collapse: collapse; margin-bottom: 20px; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 6px rgba(0,0,0,0.08); }
+    th { background: #c0392b; color: white; padding: 10px 16px; font-size: 14px; }
+    td { padding: 10px 16px; font-size: 14px; border-bottom: 1px solid #eee; }
+    tr:last-child td { border-bottom: none; }
+  </style>
+</head>
+<body>
+
+<h2>🧪 ทดสอบสร้างป้าย — RTC M&S</h2>
+
+<div class="controls">
+  <strong>เลือก % ลด:</strong>
+  <button class="pct-btn selected" data-pct="50" onclick="selectPct(50)">50%</button>
+  <button class="pct-btn" data-pct="75" onclick="selectPct(75)">75%</button>
+  <button class="btn-pdf" onclick="exportPDF()">📄 Export PDF A4</button>
+</div>
+
+<table id="summary-table">
+  <thead><tr><th>#</th><th>บาร์โค้ด</th><th>สินค้า</th><th>ราคาเต็ม</th><th>ลด 50%</th><th>ลด 75%</th></tr></thead>
+  <tbody id="table-body"></tbody>
+</table>
+
+<div class="grid" id="tag-grid"></div>
+
+<script>
+const EXAMPLES = [
+  { barcode: '2177320019253', name: 'ฟักทองบัตเตอร์นัท' },
+  { barcode: '2118390031752', name: 'อกไก่ BB (446g)' },
+  { barcode: '2118390032001', name: 'อกไก่ BB (450g)' },
+  { barcode: '2119730062252', name: 'ปีกเต็มไก่' },
+];
+
+let currentPct = 50;
+
+function decodeBarcode(b) {
+  if (b.length !== 13 || b[0] !== '2') return null;
+  const plu = b.slice(1, 7);
+  const price = parseInt(b.slice(7, 12)) / 100;
+  return { plu, price };
+}
+
+function roundToQuarter(v) {
+  return Math.ceil(v * 4) / 4;
+}
+
+function ean13Check(d12) {
+  let s = 0;
+  for (let i = 0; i < 12; i++) s += parseInt(d12[i]) * (i % 2 === 0 ? 1 : 3);
+  return (10 - (s % 10)) % 10;
+}
+
+function buildDiscountBarcode(plu, salePrice) {
+  const p = Math.round(salePrice * 100).toString().padStart(5, '0');
+  const base = '2' + plu + p;
+  return base + ean13Check(base);
+}
+
+function fmt(n) { return n.toFixed(2); }
+
+function selectPct(pct) {
+  currentPct = pct;
+  document.querySelectorAll('.pct-btn').forEach(b => b.classList.toggle('selected', parseInt(b.dataset.pct) === pct));
+  render();
+}
+
+async function render() {
+  const tbody = document.getElementById('table-body');
+  const grid = document.getElementById('tag-grid');
+  tbody.innerHTML = '';
+  grid.innerHTML = '';
+
+  for (let i = 0; i < EXAMPLES.length; i++) {
+    const ex = EXAMPLES[i];
+    const dec = decodeBarcode(ex.barcode);
+    if (!dec) continue;
+
+    const sale50 = roundToQuarter(dec.price * 0.5);
+    const sale75 = roundToQuarter(dec.price * 0.25);
+    const salePrice = currentPct === 50 ? sale50 : sale75;
+    const newBarcode = buildDiscountBarcode(dec.plu, salePrice);
+
+    // Table row
+    tbody.innerHTML += `<tr>
+      <td>${i+1}</td>
+      <td style="font-family:monospace;font-size:12px">${ex.barcode}</td>
+      <td>${ex.name}</td>
+      <td>฿${fmt(dec.price)}</td>
+      <td style="color:#c0392b;font-weight:700">฿${fmt(sale50)}</td>
+      <td style="color:#c0392b;font-weight:700">฿${fmt(sale75)}</td>
+    </tr>`;
+
+    // Tag card — สร้าง element แยกกัน ไม่ใช้ innerHTML += (ทำให้ canvas หลุด DOM)
+    const div = document.createElement('div');
+    div.className = 'tag';
+
+    const badge = document.createElement('div');
+    badge.className = 'pct-tag';
+    badge.textContent = `ลด ${currentPct}%`;
+
+    const canvas = document.createElement('canvas');
+
+    const saleDiv = document.createElement('div');
+    saleDiv.className = 'sale';
+    saleDiv.textContent = `฿${fmt(salePrice)}`;
+
+    const fullDiv = document.createElement('div');
+    fullDiv.className = 'full';
+    fullDiv.textContent = `฿${fmt(dec.price)}`;
+
+    const bcDiv = document.createElement('div');
+    bcDiv.className = 'barcode';
+    bcDiv.textContent = newBarcode;
+
+    div.appendChild(badge);
+    div.appendChild(canvas);
+    div.appendChild(saleDiv);
+    div.appendChild(fullDiv);
+    div.appendChild(bcDiv);
+    grid.appendChild(div);
+
+    await QRCode.toCanvas(canvas, newBarcode, { width: 150, margin: 1, errorCorrectionLevel: 'M' });
+  }
+}
+
+async function exportPDF() {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const dateStr = new Date().toLocaleDateString('th-TH');
+
+  const TAG_W = 51, TAG_H = 51, COLS = 3, MX = 10, MY = 10, GX = 4, GY = 4;
+  let col = 0, row = 0, page = 1;
+  const maxRows = Math.floor((297 - MY * 2) / (TAG_H + GY));
+
+  for (const ex of EXAMPLES) {
+    const dec = decodeBarcode(ex.barcode);
+    if (!dec) continue;
+    const salePrice = roundToQuarter(dec.price * (currentPct === 50 ? 0.5 : 0.25));
+    const newBarcode = buildDiscountBarcode(dec.plu, salePrice);
+
+    const x = MX + col * (TAG_W + GX);
+    const y = MY + row * (TAG_H + GY);
+
+    // QR image
+    const qrDataUrl = await QRCode.toDataURL(newBarcode, { width: 256, margin: 1, errorCorrectionLevel: 'M' });
+    const qrSize = TAG_W * 0.68;
+    const qrX = x + (TAG_W - qrSize) / 2;
+    const qrY = y + 2;
+    doc.addImage(qrDataUrl, 'PNG', qrX, qrY, qrSize, qrSize);
+
+    // Border
+    doc.setDrawColor(200); doc.setLineWidth(0.3);
+    doc.roundedRect(x, y, TAG_W, TAG_H, 2, 2, 'S');
+
+    // ราคาลด
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(14); doc.setTextColor(192, 57, 43);
+    doc.text(`${fmt(salePrice)} B`, x + TAG_W / 2, qrY + qrSize + 6, { align: 'center' });
+
+    // ราคาเดิม + ขีดทับ
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(150, 150, 150);
+    const fullTxt = `${fmt(dec.price)} B`;
+    const fx = x + TAG_W / 2, fy = qrY + qrSize + 11;
+    doc.text(fullTxt, fx, fy, { align: 'center' });
+    const tw = doc.getTextWidth(fullTxt);
+    doc.setDrawColor(150, 150, 150); doc.setLineWidth(0.4);
+    doc.line(fx - tw / 2, fy - 1, fx + tw / 2, fy - 1);
+
+    // วันที่
+    doc.setFontSize(6); doc.setTextColor(180, 180, 180);
+    doc.text(`${dateStr}  ลด${currentPct}%`, x + TAG_W / 2, y + TAG_H - 2, { align: 'center' });
+
+    col++;
+    if (col >= COLS) { col = 0; row++; }
+    if (row >= maxRows) { row = 0; doc.addPage(); }
+  }
+
+  doc.save(`RTC-MS_test_${currentPct}pct.pdf`);
+}
+
+render();
+</script>
+</body>
+</html>

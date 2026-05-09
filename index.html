@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="th">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="theme-color" content="#c0392b" />
+    <title>RTC M&amp;S</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <div id="app">
+
+      <!-- ===== หน้า 1: เลือก % ===== -->
+      <div id="page-select" class="page active">
+        <div class="page-header">
+          <div class="logo-title">RTC M&amp;S</div>
+          <div class="logo-sub">ระบบลดราคาสินค้า</div>
+        </div>
+
+        <div class="select-body">
+          <p class="select-label">เลือกอัตราลดราคา</p>
+          <div class="pct-buttons">
+            <button class="pct-btn" data-pct="50">
+              <span class="pct-num">50</span>
+              <span class="pct-sign">%</span>
+            </button>
+            <button class="pct-btn" data-pct="75">
+              <span class="pct-num">75</span>
+              <span class="pct-sign">%</span>
+            </button>
+          </div>
+          <button id="btn-start" class="btn-primary" disabled>เริ่มแสกนสินค้า →</button>
+        </div>
+      </div>
+
+      <!-- ===== หน้า 2: แสกน + รายการ ===== -->
+      <div id="page-scan" class="page">
+        <div class="scan-header">
+          <button id="btn-back" class="btn-back">←</button>
+          <div class="scan-title">RTC M&amp;S</div>
+          <div id="pct-badge" class="pct-badge">ลด 50%</div>
+        </div>
+
+        <!-- Scanner modal -->
+        <div id="scanner-modal" class="scanner-modal" style="display:none">
+          <div id="reader"></div>
+          <button id="btn-close-scan" class="btn-close-scan">✕ ปิดกล้อง</button>
+        </div>
+
+        <!-- Result card หลังแสกน -->
+        <div id="result-card" class="result-card" style="display:none">
+          <div class="result-row">
+            <span class="result-label">บาร์โค้ด</span>
+            <span id="res-barcode" class="result-value mono">—</span>
+          </div>
+          <div class="result-row">
+            <span class="result-label">ราคาเต็ม</span>
+            <span id="res-full" class="result-value">—</span>
+          </div>
+          <div class="result-row highlight">
+            <span class="result-label">ราคาลด</span>
+            <span id="res-sale" class="result-value sale-price">—</span>
+          </div>
+          <div class="result-actions">
+            <button id="btn-save-item" class="btn-primary">✓ บันทึก</button>
+            <button id="btn-cancel-item" class="btn-secondary">ยกเลิก</button>
+          </div>
+        </div>
+
+        <!-- ปุ่มแสกน -->
+        <button id="btn-scan" class="btn-scan-main">
+          <span class="scan-icon">📷</span>
+          <span>แสกนสินค้า</span>
+        </button>
+
+        <!-- รายการสะสม -->
+        <div class="list-section">
+          <div class="list-header">
+            <span>รายการ (<span id="item-count">0</span>)</span>
+            <button id="btn-clear" class="btn-text-danger" style="display:none">ล้างทั้งหมด</button>
+          </div>
+          <div id="item-list" class="item-list">
+            <div class="empty-state">ยังไม่มีรายการ<br>กดแสกนเพื่อเริ่ม</div>
+          </div>
+        </div>
+
+        <!-- Export -->
+        <div class="export-bar" id="export-bar" style="display:none">
+          <button id="btn-export" class="btn-export">📄 Export PDF</button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" class="toast"></div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

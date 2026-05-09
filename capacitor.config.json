@@ -1,0 +1,14 @@
+{
+  "appId": "com.rtcms.discount",
+  "appName": "RTC M&S",
+  "webDir": "dist",
+  "bundledWebRuntime": false,
+  "android": {
+    "allowMixedContent": true
+  },
+  "plugins": {
+    "Camera": {
+      "presentationStyle": "fullscreen"
+    }
+  }
+}
